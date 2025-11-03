@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 import os
 import psycopg2
+import pandas as pd
 
 class DatabaseConnection:
     def __init__(self):
@@ -19,10 +20,14 @@ class DatabaseConnection:
             port=db_port
         )
 
-    def fetch_data(self, query):
+    def fetch_data(self, table_name):
         with self.connection.cursor() as cursor:
-            cursor.execute(query)
-            return cursor.fetchall()
+            try:
+                cursor.execute(f'SELECT * FROM {table_name};')
+            except Exception as e:
+                print(f"Error fetching data from table {table_name}: {e}")
+                return []
+            return pd.DataFrame(cursor.fetchall(), columns=[desc[0] for desc in cursor.description])
 
     @property
     def conn(self):
