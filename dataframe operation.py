@@ -1,29 +1,41 @@
 import pandas as pd
-from typing import Dict, Tuple, Union, List
+from typing import Callable, List, Union
 def data_underscore_query(
         X: pd.DataFrame,
         Y: pd.DataFrame,
-        filters: pd.DataFrame,
-        merge_key: str,
-        conditions: Dict[str, Union[Tuple[str, float], float]],
-        multiplier_col: str = None,
-        multiplier: float = 1.0
-)-> Tuple[pd.DataFrame, pd.DataFrame]:
-        #Apply each cross-frame condition
-    for name, func in conditions.items():
-        mask = func(X, Y, df_filtered)
-        if not isinstance(mask, pd.Series) or mask.dtype != bool:
-            raise ValueError(f"Condition '{name}' must return a boolean Series mask.")
-        if len(mask) != len(df_filtered):
-            raise ValueError(f"Mask length mismatch for condition '{name}'.")
-        df_filtered = df_filtered[mask]
-        # Keep only merge key
-    df_filtered = df_filtered[[merge_key]].drop_duplicates()
-        #Merge with X and Y
-    X_filtered = pd.merge(X, df_filtered, on=merge_key, how='inner')
-    Y_filtered = pd.merge(Y, df_filtered, on=merge_key, how='inner')
-        # Optional multiplier
-    if multiplier_col and multiplier_col in X_filtered.columns:
-        X_filtered[multiplier_col] *= multiplier
+        X_filter: pd.DataFrame,
+        Y_filter: pd.DataFrame,
+        multiplier: pd.DataFrame,
+)-> tuple[pd.DataFrame, pd.DataFrame]:
+        #Apply condition for X
+        X_result = X.copy()
+        if X_filter:
+            combined_mask = pd.Series(True, index=X.index)
+            for func in X_filter:
+                mask = func(X_result)
+                if not isinstance(mask, (pd.Series, np.ndarray)):
+                    raise ValueError(
+                        "One of the X filters did NOT return a Boolean mask."
+                    )
+                combined_mask &= mask
+            X_result = X_result[combined_mask]
+        #Apply condition for Y
+        Y_result = Y.copy()
+        if Y_filter:
+            combined_mask = pd.Series(True, index=Y.index)
+            for func in Y_filter:
+                mask = func(Y_result)
+                if not isinstance(mask, (pd.Series, np.ndarray)):
+                    raise ValueError(
+                        "One of the Y filters did NOT return a Boolean mask."
+                    )
+                combined_mask &= mask
+            Y_result = Y_result[combined_mask]
+        #Apply Multiplier to Filtered X
+        if multiplier:
+            for func in multiplier:
+                X_result = func(X_result)
 
-    return X_filtered, Y_filtered
+        return X_result, Y_result
+
+        
