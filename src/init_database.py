@@ -4,7 +4,7 @@ import pandas as pd
 import psycopg2
 import glob
 
-def init_database(overwrite=False):
+def init_database(overwrite=False, verbose=False):
     # --- Load .env variables ---
     load_dotenv()
 
@@ -27,12 +27,14 @@ def init_database(overwrite=False):
     with conn.cursor() as cursor:
         if (overwrite):
             cursor.execute(f"DROP DATABASE IF EXISTS {db_name};")
-            print(f"Database {db_name} dropped.")
+            if verbose:
+                print(f"Database {db_name} dropped.")
         cursor.execute(f"SELECT 1 FROM pg_database WHERE datname = '{db_name}';")
         exists = cursor.fetchone()
         if not exists:
             cursor.execute(f"CREATE DATABASE {db_name};")
-            print(f"Database {db_name} created.")
+            if verbose:
+                print(f"Database {db_name} created.")
 
     conn.close()
 
@@ -44,7 +46,8 @@ def init_database(overwrite=False):
         host=db_host,
         port=db_port
     )
-    print(f'Connected to database {db_name} at {db_host}:{db_port} as user {db_user}')
+    if verbose:
+        print(f'Connected to database {db_name} at {db_host}:{db_port} as user {db_user}')
 
     # IMPORTANT: this code will probably need to be changed
     # depending on the specifics of the imported csv files
@@ -72,7 +75,8 @@ def init_database(overwrite=False):
             """)
             table_exists = cursor.fetchone()[0]
             if table_exists:
-                print(f"Table {filename} already exists. Skipping data insertion.")
+                if verbose:
+                    print(f"Table {filename} already exists. Skipping data insertion.")
                 continue
 
             # --- Create table ---
@@ -91,6 +95,8 @@ def init_database(overwrite=False):
                     INSERT INTO {filename} (department, year, value)
                     VALUES (%s, %s, %s);
                 """, (row['Department'], row['year'], row['value']))
-            print(f"Data from {file} inserted into table {filename}.")
+            if verbose:
+                print(f"Data from {file} inserted into table {filename}.")
 
+    print("Database initialization complete.")
     conn.commit()
